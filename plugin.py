@@ -28,6 +28,7 @@
 
 ###
 
+import supybot.conf as conf
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
@@ -55,6 +56,7 @@ class DFBugMonitor(callbacks.Plugin):
         self.__parent.__init__(irc)
 
         self.irc = irc
+        self.original_nick = conf.supybot.nick()
 
         # Get the latest devlog
         d = feedparser.parse(DEVLOG_URL)
@@ -93,6 +95,9 @@ class DFBugMonitor(callbacks.Plugin):
 
         return wrapper()
 
+    def check_nick(self):
+        self.irc.queueMsg(ircmsgs.nick(self.original_nick))
+
     def check_devlog(self):
         d = feedparser.parse(DEVLOG_URL)
 
@@ -125,6 +130,7 @@ class DFBugMonitor(callbacks.Plugin):
             self.queue_messages(split_message)
 
     def scrape_changelog(self):
+        self.check_nick()
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
         soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
