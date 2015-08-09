@@ -36,15 +36,21 @@ import supybot.callbacks as callbacks
 import supybot.schedule as schedule
 import supybot.ircmsgs as ircmsgs
 
+import datetime
 import time
 import re
 import urllib2
 import feedparser
 from html2text import HTML2Text
 from BeautifulSoup import BeautifulSoup
+from dateutil.relativedelta import relativedelta
 
 DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
+RELEASE_LOG_URL = 'http://www.bay12games.com/dwarves/dev_release.rss'
 CHANGELOG_URL = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php'
+
+def pluralize(n, word, ending='s'):
+    return '%i %s%s' % (n, word, ending if n != 1 else '')
 
 class DFBugMonitor(callbacks.Plugin):
     """Simply load the plugin, and it will periodically check for DF bugfixes
@@ -226,6 +232,34 @@ class DFBugMonitor(callbacks.Plugin):
         for channel in sorted(self.irc.state.channels):
             for msg in msg_list:
                 self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
+
+    class df(callbacks.Commands):
+        def version(self, irc, msg, args):
+            """takes no arguments
+
+            Returns the current DF version
+            """
+            e = feedparser.parse(RELEASE_LOG_URL).entries[0]
+            version = re.search(r'DF\s*(\S+)', e.title).group(1)
+            date = time.strftime('%B %d, %Y', e.published_parsed)
+
+            t = datetime.datetime.fromtimestamp(time.mktime(e.published_parsed))
+            delta = relativedelta(datetime.datetime.now(), t)
+            delta_str = ''
+            if delta.years:
+                delta_str += pluralize(delta.years, 'year') + ', '
+            if delta.months:
+                delta_str += pluralize(delta.months, 'month') + ', '
+            if delta.days:
+                delta_str += pluralize(delta.days, 'day')
+            delta_str = delta_str.rstrip(', ')
+            if not delta_str:
+                delta_str = 'today'
+            else:
+                delta_str += ' ago'
+
+            irc.reply('Latest DF version: %s, released %s [%s]' % (version, date, delta_str))
+        version = wrap(version)
 
 
     def die(self):
