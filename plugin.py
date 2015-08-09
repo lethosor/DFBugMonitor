@@ -45,6 +45,8 @@ from html2text import HTML2Text
 from BeautifulSoup import BeautifulSoup
 from dateutil.relativedelta import relativedelta
 
+import ghapi
+
 DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
 RELEASE_LOG_URL = 'http://www.bay12games.com/dwarves/dev_release.rss'
 CHANGELOG_URL = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php'
@@ -87,6 +89,7 @@ class DFBugMonitor(callbacks.Plugin):
 
         self.schedule_event(self.scrape_changelog, 'bug_poll_s', 'scrape')
         self.schedule_event(self.check_devlog, 'devlog_poll_s', 'check_devlog')
+        schedule.addPeriodicEvent(ghapi.clear_cache, 3600, name='github-clear-cache', now=False)
 
     def schedule_event(self, f, config_value, name):
         # Like schedule.addPeriodicEvent, but capture the name of our config
@@ -261,6 +264,16 @@ class DFBugMonitor(callbacks.Plugin):
             irc.reply('Latest DF version: %s, released %s [%s]' % (version, date, delta_str))
         version = wrap(version)
 
+    class dfhack(callbacks.Commands):
+        def version(self, irc, msg, args):
+            """takes no arguments
+
+            Returns the current DFHack version
+            """
+            rel = ghapi.request('repos/dfhack/dfhack/releases')[0]
+            irc.reply('Latest DFHack version: %s, released by %s on %s' %
+                (rel['name'], rel['author']['login'], rel['published_at']))
+        version = wrap(version)
 
     def die(self):
         schedule.removeEvent('scrape')
