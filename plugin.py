@@ -41,6 +41,7 @@ import time
 import re
 import urllib2
 import feedparser
+import dateutil.parser
 from html2text import HTML2Text
 from BeautifulSoup import BeautifulSoup
 from dateutil.relativedelta import relativedelta
@@ -51,8 +52,30 @@ DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
 RELEASE_LOG_URL = 'http://www.bay12games.com/dwarves/dev_release.rss'
 CHANGELOG_URL = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php'
 
+DATE_FORMAT = '%B %d, %Y'
+
 def pluralize(n, word, ending='s'):
     return '%i %s%s' % (n, word, ending if n != 1 else '')
+
+_default_timezone = datetime.tzinfo(0)
+def relativedelta_string(t1, t2=None):
+    if t2 is None:
+        t1, t2 = datetime.datetime.utcnow(), t1
+    t1, t2 = t1.replace(tzinfo=_default_timezone), t2.replace(tzinfo=_default_timezone)
+    delta = relativedelta(t1, t2)
+    delta_str = ''
+    if delta.years:
+        delta_str += pluralize(delta.years, 'year') + ', '
+    if delta.months:
+        delta_str += pluralize(delta.months, 'month') + ', '
+    if delta.days:
+        delta_str += pluralize(delta.days, 'day')
+    delta_str = delta_str.rstrip(', ')
+    if not delta_str:
+        delta_str = 'today'
+    else:
+        delta_str += ' ago'
+    return delta_str
 
 class DFBugMonitor(callbacks.Plugin):
     """Simply load the plugin, and it will periodically check for DF bugfixes
@@ -89,7 +112,6 @@ class DFBugMonitor(callbacks.Plugin):
 
         self.schedule_event(self.scrape_changelog, 'bug_poll_s', 'scrape')
         self.schedule_event(self.check_devlog, 'devlog_poll_s', 'check_devlog')
-        schedule.addPeriodicEvent(ghapi.clear_cache, 3600, name='github-clear-cache', now=False)
 
     def schedule_event(self, f, config_value, name):
         # Like schedule.addPeriodicEvent, but capture the name of our config
@@ -244,22 +266,10 @@ class DFBugMonitor(callbacks.Plugin):
             """
             e = feedparser.parse(RELEASE_LOG_URL).entries[0]
             version = re.search(r'DF\s*(\S+)', e.title).group(1)
-            date = time.strftime('%B %d, %Y', e.published_parsed)
+            date = time.strftime(DATE_FORMAT, e.published_parsed)
 
             t = datetime.datetime.fromtimestamp(time.mktime(e.published_parsed))
-            delta = relativedelta(datetime.datetime.now(), t)
-            delta_str = ''
-            if delta.years:
-                delta_str += pluralize(delta.years, 'year') + ', '
-            if delta.months:
-                delta_str += pluralize(delta.months, 'month') + ', '
-            if delta.days:
-                delta_str += pluralize(delta.days, 'day')
-            delta_str = delta_str.rstrip(', ')
-            if not delta_str:
-                delta_str = 'today'
-            else:
-                delta_str += ' ago'
+            delta_str = relativedelta_string(t)
 
             irc.reply('Latest DF version: %s, released %s [%s]' % (version, date, delta_str))
         version = wrap(version)
@@ -271,8 +281,14 @@ class DFBugMonitor(callbacks.Plugin):
             Returns the current DFHack version
             """
             rel = ghapi.request('repos/dfhack/dfhack/releases')[0]
-            irc.reply('Latest DFHack version: %s, released by %s on %s' %
-                (rel['name'], rel['author']['login'], rel['published_at']))
+            publish_date = dateutil.parser.parse(rel['published_at'])
+            date = time.strftime(DATE_FORMAT, publish_date.timetuple())
+            irc.reply('Latest DFHack version: %s, released by %s on %s [%s]' % (
+                rel['tag_name'],
+                rel['author']['login'],
+                date,
+                relativedelta_string(publish_date)
+            ))
         version = wrap(version)
 
     def die(self):
