@@ -37,16 +37,16 @@ import supybot.schedule as schedule
 import supybot.ircmsgs as ircmsgs
 
 import datetime
-import time
+import json
 import re
+import time
 import urllib2
+
 import feedparser
 import dateutil.parser
 from html2text import HTML2Text
 from BeautifulSoup import BeautifulSoup
 from dateutil.relativedelta import relativedelta
-
-import ghapi
 
 DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
 RELEASE_LOG_URL = 'http://www.bay12games.com/dwarves/dev_release.rss'
@@ -76,6 +76,32 @@ def relativedelta_string(t1, t2=None):
     else:
         delta_str += ' ago'
     return delta_str
+
+class CacheEntry(object):
+    def __init__(self, contents, life=3600):
+        self.contents = contents
+        self.time = time.time()
+        self.life = max(0, life)
+
+    @property
+    def expired(self):
+        return time.time() > self.time + self.life
+
+class GithubApi(object):
+    def __init__(self):
+        self._cache = {}
+
+    def request(self, url, ignore_cache=False):
+        if not url.startswith('https://'):
+            url = 'https://api.github.com/' + url
+        if url not in self._cache or self._cache[url].expired or ignore_cache:
+            self._cache[url] = CacheEntry(json.load(urllib2.urlopen(url)))
+        return self._cache[url].contents
+
+    def clear_cache(self):
+        self._cache.clear()
+
+ghapi = GithubApi()
 
 class DFBugMonitor(callbacks.Plugin):
     """Simply load the plugin, and it will periodically check for DF bugfixes
