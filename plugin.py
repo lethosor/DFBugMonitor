@@ -28,6 +28,8 @@
 
 ###
 
+from __future__ import division
+
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
@@ -38,6 +40,7 @@ import supybot.ircmsgs as ircmsgs
 
 import datetime
 import json
+import random
 import re
 import time
 import urllib2
@@ -316,6 +319,62 @@ class DFBugMonitor(callbacks.Plugin):
                 relativedelta_string(publish_date)
             ))
         version = wrap(version)
+
+        def downloads(self, irc, msg, args, release_name):
+            """[<release>]
+
+            Returns download statistics for the given or latest release
+            """
+            stat_format = '%s: %i/%i (%.1f%%)'
+
+            try:
+                if release_name:
+                    info = ghapi.request('repos/dfhack/dfhack/releases/tags/%s' % release_name.strip())
+                else:
+                    info = ghapi.request('repos/dfhack/dfhack/releases')[0]
+                    release_name = info['tag_name']
+            except urllib2.HTTPError as e:
+                irc.reply('Could not fetch release information - nonexistent release? (%s)' % e)
+                return
+
+            if not len(info['assets']):
+                irc.reply('No downloads for DFHack %s' % release_name)
+                return
+
+            os_counts = {'Linux': 0, 'OS X': 0, 'Windows': 0, '*': 0}
+            file_counts = {'*': 0}
+            def inc_os_count(key, value):
+                os_counts[key] += value
+                os_counts['*'] += value
+            for asset in info['assets']:
+                name = re.sub(r'dfhack|\.tar|\.bz2|\.gz|\.xz|\.7z|\.zip', '', asset['name'], flags=re.I).replace(release_name, '').strip('-')
+                file_counts[name] = asset['download_count']
+                file_counts['*'] += asset['download_count']
+                clean_name = re.sub(r'[^A-Za-z]', '', name.lower())
+                if 'linux' in clean_name:
+                    inc_os_count('Linux', asset['download_count'])
+                elif 'windows' in clean_name:
+                    inc_os_count('Windows', asset['download_count'])
+                elif 'osx' in clean_name or 'mac' in clean_name:
+                    inc_os_count('OS X', asset['download_count'])
+            irc.reply(('Stats for %s: ' % release_name) +
+                ' | '.join(stat_format % (os, num, os_counts['*'], num/os_counts['*'] * 100)
+                    for os, num in os_counts.items() if os != '*'))
+
+            messages = list(stat_format % (file, num, file_counts['*'], num/file_counts['*'] * 100)
+                for file, num in file_counts.items() if file != '*')
+            current_message = ''
+            while True:
+                if not len(messages):
+                    irc.reply(current_message.rstrip('| '))
+                    break
+                msg = messages.pop()
+                if len(current_message) + len(msg) + 3 > 400:
+                    irc.reply(current_message.rstrip('| '))
+                    current_message = ''
+                current_message += msg + ' | '
+
+        downloads = wrap(downloads, [optional('text')])
 
     def die(self):
         schedule.removeEvent('scrape')
