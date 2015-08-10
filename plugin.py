@@ -416,6 +416,14 @@ class DFBugMonitor(callbacks.Plugin):
 
         todo = wrap(todo)
 
+    class github(callbacks.Commands):
+
+        def ratelimit(self, irc, msg, args):
+            rate = ghapi.request('rate_limit', ignore_cache=True)['rate']
+            secs = int(rate['reset'] - time.time())
+            irc.reply('%i/%i remaining; resets in %i:%02i' %
+                (rate['remaining'], rate['limit'], secs // 60, secs % 60))
+
     def die(self):
         schedule.removeEvent('scrape')
         schedule.removeEvent('check_devlog')
