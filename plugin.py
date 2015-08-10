@@ -424,6 +424,13 @@ class DFBugMonitor(callbacks.Plugin):
             irc.reply('%i/%i remaining; resets in %i:%02i' %
                 (rate['remaining'], rate['limit'], secs // 60, secs % 60))
 
+        ratelimit = wrap(ratelimit)
+
+        def refresh(self, irc, msg, args):
+            ghapi.clear_cache()
+
+        refresh = wrap(refresh, [('checkCapability', 'admin')])
+
     def die(self):
         schedule.removeEvent('scrape')
         schedule.removeEvent('check_devlog')
