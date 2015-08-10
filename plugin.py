@@ -37,6 +37,7 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.schedule as schedule
 import supybot.ircmsgs as ircmsgs
+import supybot.log as log
 
 import datetime
 import json
@@ -145,6 +146,9 @@ class DFBugMonitor(callbacks.Plugin):
     def schedule_event(self, f, config_value, name):
         # Like schedule.addPeriodicEvent, but capture the name of our config
         # variable in the closure rather than the value
+        if name in schedule.schedule.events:
+            log.warning('Event %s already scheduled; removing' % name)
+            schedule.removeEvent(name)
         def wrapper():
             try:
                 f()
