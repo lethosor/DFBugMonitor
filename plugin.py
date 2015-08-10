@@ -300,7 +300,7 @@ class DFBugMonitor(callbacks.Plugin):
             t = datetime.datetime.fromtimestamp(time.mktime(e.published_parsed))
             delta_str = relativedelta_string(t)
 
-            irc.reply('Latest DF version: %s, released %s [%s]' % (version, date, delta_str))
+            irc.reply('Latest DF version: %s, released %s [%s]: http://www.bay12games.com/dwarves/' % (version, date, delta_str))
         version = wrap(version)
 
     class dfhack(callbacks.Commands):
@@ -312,11 +312,12 @@ class DFBugMonitor(callbacks.Plugin):
             rel = ghapi.request('repos/dfhack/dfhack/releases')[0]
             publish_date = dateutil.parser.parse(rel['published_at'])
             date = time.strftime(DATE_FORMAT, publish_date.timetuple())
-            irc.reply('Latest DFHack version: %s, released by %s on %s [%s]' % (
+            irc.reply('Latest DFHack version: %s, released by %s on %s [%s]: %s' % (
                 rel['tag_name'],
                 rel['author']['login'],
                 date,
-                relativedelta_string(publish_date)
+                relativedelta_string(publish_date),
+                rel['html_url']
             ))
         version = wrap(version)
 
