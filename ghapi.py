@@ -14,7 +14,7 @@ class CacheEntry:
 def request(url, ignore_cache=False):
     if not url.startswith('https://'):
         url = 'https://api.github.com/' + url
-    if url not in _cache or or _cache[url].expired or ignore_cache:
+    if url not in _cache or _cache[url].expired or ignore_cache:
         _cache[url] = CacheEntry(json.load(urllib2.urlopen(url)))
     return _cache[url].contents
 
