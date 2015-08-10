@@ -355,7 +355,7 @@ class DFBugMonitor(callbacks.Plugin):
                     inc_os_count('Linux', asset['download_count'])
                 elif 'windows' in clean_name:
                     inc_os_count('Windows', asset['download_count'])
-                elif 'osx' in clean_name or 'mac' in clean_name:
+                elif 'osx' in clean_name or 'mac' in clean_name or 'darwin' in clean_name:
                     inc_os_count('OS X', asset['download_count'])
             irc.reply(('Stats for %s: ' % release_name) +
                 ' | '.join(stat_format % (os, num, os_counts['*'], num/os_counts['*'] * 100)
