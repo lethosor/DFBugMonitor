@@ -107,6 +107,38 @@ class GithubApi(object):
 
 ghapi = GithubApi()
 
+class GSearchNoResults(Exception): pass
+
+def gsearch_clean(x):
+    return ' %s ' % re.sub(r'[^a-z0-9]', '', str(x).lower())
+
+def gsearch_relevance(search, candidate):
+    """ Return the relevance of a candidate - 0 = perfect match, -1 = invalid """
+    search, candidate = gsearch_clean(search), gsearch_clean(candidate)
+    relevance = 0
+    while search:
+        pos = candidate.find(search[0])
+        if pos == -1:
+            return -1
+        relevance += pos
+        search = search[1:]
+        candidate = candidate[pos+1:]
+    return relevance
+
+def gsearch(search, candidates, candidate_filter=lambda result: result):
+    results = candidates[:]
+    results.sort(key=lambda c: gsearch_relevance(search, candidate_filter(c)))
+    while results and gsearch_relevance(search, candidate_filter(results[0])) == -1:
+        results.pop(0)
+    return results
+
+def gsearch_top(*args, **kwargs):
+    results = gsearch(*args, **kwargs)
+    if results:
+        return results[0]
+    else:
+        raise GSearchNoResults
+
 class DFBugMonitor(callbacks.Plugin):
     """Simply load the plugin, and it will periodically check for DF bugfixes
     and announce them"""
@@ -413,8 +445,25 @@ class DFBugMonitor(callbacks.Plugin):
             irc.reply('Next milestone: %s | %i/%i items done (%.1f%%) | %s' %
                 (next_milestone['title'], closed, total, closed/total * 100, next_milestone['html_url']))
 
-
         todo = wrap(todo)
+
+        def get(self, irc, msg, args, filename):
+            info = ghapi.request('repos/dfhack/dfhack/releases')[0]
+            def send_valid_assets():
+                irc.reply('Available downloads: %s' %
+                    ', '.join(map(lambda a: re.sub(r'\-*dfhack\-*', '', a['name']), info['assets'])))
+            if not filename:
+                send_valid_assets()
+                irc.reply('Use "dfhack get <part of filename>" for a direct link')
+                return
+            try:
+                asset = gsearch_top(filename, info['assets'], lambda a: a['name'])
+                irc.reply('%s: %s' % (asset['name'], asset['browser_download_url']))
+            except GSearchNoResults:
+                irc.reply('No downloads matching "%s" found' % filename)
+                send_valid_assets()
+
+        get = wrap(get, [optional('text')])
 
     class github(callbacks.Commands):
 
