@@ -395,10 +395,10 @@ class DFBugMonitor(callbacks.Plugin):
                 elif 'osx' in clean_name or 'mac' in clean_name or 'darwin' in clean_name:
                     inc_os_count('OS X', asset['download_count'])
             irc.reply(('Stats for %s: ' % release_name) +
-                ' | '.join(stat_format % (os, num, os_counts['*'], num/os_counts['*'] * 100)
+                ' | '.join(stat_format % (os, num, os_counts['*'], (num/os_counts['*'] * 100) if os_counts['*'] else 0)
                     for os, num in os_counts.items() if os != '*'))
 
-            messages = list(stat_format % (file, num, file_counts['*'], num/file_counts['*'] * 100)
+            messages = list(stat_format % (file, num, file_counts['*'], (num/file_counts['*'] * 100) if os_counts['*'] else 0)
                 for file, num in file_counts.items() if file != '*')
             current_message = ''
             while True:
