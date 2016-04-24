@@ -421,24 +421,27 @@ class DFBugMonitor(callbacks.Plugin):
             cur_release = ghapi.request('repos/dfhack/dfhack/releases')[0]['tag_name']
             release_regex = re.compile(r'(r)(\d+)$')
             match = release_regex.search(cur_release)
-            if not match:
-                irc.reply('Could not parse current release: %s' % cur_release)
-                return
-
-            next_release = release_regex.sub(match.group(1) + str(int(match.group(2)) + 1), cur_release)
             next_milestone = None
-            def find_next_milestone(callback):
-                candidates = filter(callback, milestones)
-                candidates = filter(lambda m: m['open_issues'] or m['closed_issues'], candidates)
-                candidates = list(candidates)
-                return candidates[0] if len(candidates) else None
 
-            next_milestone = find_next_milestone(lambda m: m['title'] == next_release)
+            if match:
+                next_release = release_regex.sub(match.group(1) + str(int(match.group(2)) + 1), cur_release)
+                next_milestone = None
+                def find_next_milestone(callback):
+                    candidates = filter(callback, milestones)
+                    candidates = filter(lambda m: m['open_issues'] or m['closed_issues'], candidates)
+                    candidates = list(candidates)
+                    return candidates[0] if len(candidates) else None
+
+                next_milestone = find_next_milestone(lambda m: m['title'] == next_release)
+                if not next_milestone:
+                    next_milestone = find_next_milestone(lambda m: 'next' in m['description'].lower())
+
             if not next_milestone:
-                next_milestone = find_next_milestone(lambda m: 'next' in m['description'].lower())
-            if not next_milestone:
-                irc.reply('Could not find milestone following %s' % cur_release)
-                return
+                if milestones:
+                    next_milestone = milestones[0]
+                else:
+                    irc.reply('Could not find milestone following %s' % cur_release)
+                    return
 
             closed = next_milestone['closed_issues']
             total = next_milestone['open_issues'] + closed
