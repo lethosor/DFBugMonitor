@@ -415,6 +415,7 @@ class DFBugMonitor(callbacks.Plugin):
 
         def todo(self, irc, msg, args):
             milestones = ghapi.request('https://api.github.com/repos/dfhack/dfhack/milestones?state=open')
+            milestones.sort(key=lambda m: m['number'])
             if not len(milestones):
                 irc.reply('No open milestones')
                 return
