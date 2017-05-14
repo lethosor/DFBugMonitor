@@ -414,6 +414,8 @@ class DFBugMonitor(callbacks.Plugin):
         downloads = wrap(downloads, [optional('text')])
 
         def todo(self, irc, msg, args):
+            """takes no arguments"""
+
             milestones = ghapi.request('https://api.github.com/repos/dfhack/dfhack/milestones?state=open')
             milestones.sort(key=lambda m: m['number'])
             if not len(milestones):
@@ -452,6 +454,7 @@ class DFBugMonitor(callbacks.Plugin):
         todo = wrap(todo)
 
         def get(self, irc, msg, args, filename):
+            """[<part of filename>]"""
             info = ghapi.request('repos/dfhack/dfhack/releases')[0]
             def send_valid_assets():
                 irc.reply('Available downloads: %s' %
@@ -472,6 +475,7 @@ class DFBugMonitor(callbacks.Plugin):
     class github(callbacks.Commands):
 
         def ratelimit(self, irc, msg, args):
+            """takes no arguments"""
             rate = ghapi.request('rate_limit', ignore_cache=True)['rate']
             secs = int(rate['reset'] - time.time())
             irc.reply('%i/%i remaining; resets in %i:%02i' %
@@ -480,6 +484,7 @@ class DFBugMonitor(callbacks.Plugin):
         ratelimit = wrap(ratelimit)
 
         def refresh(self, irc, msg, args):
+            """takes no arguments"""
             ghapi.clear_cache()
 
         refresh = wrap(refresh, [('checkCapability', 'admin')])
