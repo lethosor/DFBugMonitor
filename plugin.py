@@ -40,12 +40,16 @@ import supybot.ircmsgs as ircmsgs
 import supybot.log as log
 
 import datetime
+import hashlib
 import json
 import random
 import re
+import socket
+import threading
 import time
 import urllib2
 
+import flask
 import feedparser
 import dateutil.parser
 from html2text import HTML2Text
@@ -106,6 +110,50 @@ class GithubApi(object):
         self._cache.clear()
 
 ghapi = GithubApi()
+
+class WebhookManager(object):
+    def __init__(self, on_event):
+        self.app = flask.Flask(__name__)
+        self.on_event = on_event
+        self._shutdown = False
+        self.token = hashlib.sha1(str(random.random())).hexdigest()
+
+        @self.app.route('/hook/', methods=['GET', 'POST'])
+        def hook():
+            request = flask.request
+            if self._shutdown:
+                request.environ.get('werkzeug.server.shutdown')()
+
+            if request.method == 'POST':
+                if request.json and 'X-GitHub-Event' in request.headers:
+                    self.on_event(request.headers['X-GitHub-Event'], request.json)
+
+            resp = flask.make_response('')
+            resp.headers['server'] = ''
+            resp.headers['date'] = ''
+            return resp
+
+        print('/shutdown/' + self.token + '/')
+        @self.app.route('/shutdown/' + self.token + '/')
+        def shutdown():
+            self._shutdown = True
+            flask.request.environ.get('werkzeug.server.shutdown')()
+            return 'shutdown'
+
+    def start(self):
+        def run():
+            self.app.run(host='0.0.0.0', port=9002, threaded=True)
+        t = threading.Thread(name='webhook_server', target=run)
+        t.daemon = True
+        t.start()
+
+    def stop(self):
+        self._shutdown = True
+        s = socket.socket()
+        s.connect(('localhost', 9002))
+        s.send('GET /shutdown/%s/ HTTP/1.0\r\n\r\n' % self.token)
+        s.recv(1024)
+        s.close()
 
 class GSearchNoResults(Exception): pass
 
@@ -174,6 +222,9 @@ class DFBugMonitor(callbacks.Plugin):
 
         self.schedule_event(self.scrape_changelog, 'bug_poll_s', 'scrape')
         self.schedule_event(self.check_devlog, 'devlog_poll_s', 'check_devlog')
+
+        self.webhooks = WebhookManager(on_event=self.on_webhook_event)
+        self.webhooks.start()
 
     def schedule_event(self, f, config_value, name):
         # Like schedule.addPeriodicEvent, but capture the name of our config
@@ -319,9 +370,40 @@ class DFBugMonitor(callbacks.Plugin):
             return []
 
     def queue_messages(self, msg_list):
+        if not isinstance(msg_list, list):
+            msg_list = [msg_list]
         for channel in sorted(self.irc.state.channels):
             for msg in msg_list:
                 self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
+
+    def queue_messages_for_repo(self, repo, msg_list):
+        if not isinstance(msg_list, list):
+            msg_list = [msg_list]
+        channels = ['#yadc', 'lethosor']
+        for channel in channels:
+            for msg in msg_list:
+                self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
+
+    def on_webhook_event(self, type, data):
+        msgs = []
+        if 'repository' in data:
+            repo = data['repository']['name']
+        else:
+            return
+        if type == 'push':
+            branch = data['ref'].replace('refs/heads/', '')
+            count = len(data['commits'])
+            msgs.append('[{repo}] {user} {verb} {num} {commits} to {branch}: {link}'.format(
+                repo=repo,
+                user=data['sender']['login'],
+                verb='force-pushed' if data['forced'] else 'pushed',
+                num=count,
+                commits='commit' if count == 1 else 'commits',
+                branch=branch,
+                link=data['compare'],
+            ))
+
+        self.queue_messages_for_repo(repo, msgs)
 
     class df(callbacks.Commands):
         def version(self, irc, msg, args):
@@ -492,6 +574,7 @@ class DFBugMonitor(callbacks.Plugin):
     def die(self):
         schedule.removeEvent('scrape')
         schedule.removeEvent('check_devlog')
+        self.webhooks.stop()
 
 
 Class = DFBugMonitor
