@@ -1,0 +1,6 @@
+limnoria
+feedparser
+html2text
+BeautifulSoup
+python-dateutil
+flask
