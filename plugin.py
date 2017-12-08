@@ -379,15 +379,20 @@ class DFBugMonitor(callbacks.Plugin):
     def queue_messages_for_repo(self, repo, msg_list):
         if not isinstance(msg_list, list):
             msg_list = [msg_list]
-        channels = ['#yadc', 'lethosor']
+        repo_owner = repo.split('/')[0].lower()
+        channels = []
+        if repo_owner == 'lethosor':
+            channels = ['lethosor']
+        elif repo_owner == 'dfhack':
+            channels = ['#dfhack']
         for channel in channels:
             for msg in msg_list:
-                self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
+                self.irc.sendMsg(ircmsgs.privmsg(channel, msg))
 
     def on_webhook_event(self, type, data):
         msgs = []
         if 'repository' in data:
-            repo = data['repository']['name']
+            repo = data['repository']['full_name']
         else:
             return
         if type == 'push':
