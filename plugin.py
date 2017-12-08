@@ -125,8 +125,8 @@ class WebhookManager(object):
                 request.environ.get('werkzeug.server.shutdown')()
 
             if request.method == 'POST':
-                if request.json and 'X-GitHub-Event' in request.headers:
-                    self.on_event(request.headers['X-GitHub-Event'], request.json)
+                if 'X-GitHub-Event' in request.headers:
+                    self.on_event(request.headers['X-GitHub-Event'], request.json or {})
 
             resp = flask.make_response('')
             resp.headers['server'] = ''
@@ -390,11 +390,19 @@ class DFBugMonitor(callbacks.Plugin):
                 self.irc.sendMsg(ircmsgs.privmsg(channel, msg))
 
     def on_webhook_event(self, type, data):
+        type = type.lower()
         msgs = []
         if 'repository' in data:
             repo = data['repository']['full_name']
+        elif type == 'BuildMaster-release-uploaded'.lower():
+            repo = 'dfhack/dfhack'
+            rel = ghapi.request('repos/dfhack/dfhack/releases')[0]
+            msgs.append('[dfhack-build] BuildMaster uploaded packages for {tag}'.format(
+                tag=rel['tag_name'],
+            ))
         else:
             return
+
         if type == 'push':
             branch = data['ref'].replace('refs/heads/', '')
             count = len(data['commits'])
