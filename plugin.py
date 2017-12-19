@@ -150,6 +150,10 @@ class WebhookManager(object):
             flask.request.environ.get('werkzeug.server.shutdown')()
             return 'shutdown'
 
+        @self.app.errorhandler(404)
+        def handle_404(*args):
+            return ''
+
     def start(self):
         def run():
             self.app.run(host='0.0.0.0', port=9002, threaded=True)
