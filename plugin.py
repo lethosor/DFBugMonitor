@@ -447,7 +447,7 @@ class DFBugMonitor(callbacks.Plugin):
                 'modified': set(),
             })
             for commit in data['commits'][:GH_MAX_COMMITS]:
-                msgs.append('{hash} {name} {message}'.format(
+                msgs.append('{hash}: {name}: {message}'.format(
                     hash=commit['id'][:7],
                     name=utf8(commit['author']['name']),
                     message=utf8(commit['message'].split('\n')[0]),
@@ -481,7 +481,7 @@ class DFBugMonitor(callbacks.Plugin):
                 repo=repo,
                 user=utf8(data['sender']['login']),
                 verb=verb,
-                id=data['number'],
+                id=data['pull_request']['number'],
                 title=utf8(data['pull_request']['title']),
                 base=data['pull_request']['base']['ref'],
                 head=data['pull_request']['head']['ref'],
