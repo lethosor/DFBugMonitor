@@ -472,11 +472,15 @@ class DFBugMonitor(callbacks.Plugin):
             if verb == 'closed' and data['pull_request']['merged']:
                 verb = 'merged'
 
-            msgs.append('[{repo}] {user} {verb} pull request #{id}: {url}'.format(
+            msgs.append('[{repo}] {user} {verb} pull request #{id}: '
+                        '{title} ({base}...{head}) {url}'.format(
                 repo=repo,
                 user=utf8(data['sender']['login']),
                 verb=verb,
                 id=data['number'],
+                title=utf8(data['pull_request']['title']),
+                base=data['pull_request']['base']['ref'],
+                head=data['pull_request']['head']['ref'],
                 url=data['pull_request']['html_url'],
             ))
 
