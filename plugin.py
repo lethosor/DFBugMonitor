@@ -39,6 +39,7 @@ import supybot.schedule as schedule
 import supybot.ircmsgs as ircmsgs
 import supybot.log as log
 
+import collections
 import datetime
 import hashlib
 import json
@@ -61,6 +62,8 @@ RELEASE_LOG_URL = 'http://www.bay12games.com/dwarves/dev_release.rss'
 CHANGELOG_URL = 'http://www.bay12games.com/dwarves/mantisbt/changelog_page.php'
 
 DATE_FORMAT = '%B %d, %Y'
+
+GH_MAX_COMMITS = 2
 
 def pluralize(n, word, ending='s'):
     return '%i %s%s' % (n, word, ending if n != 1 else '')
@@ -415,6 +418,33 @@ class DFBugMonitor(callbacks.Plugin):
                 branch=branch,
                 link=data['compare'],
             ))
+
+            changes = collections.OrderedDict({
+                'added': set(),
+                'removed': set(),
+                'modified': set(),
+            })
+            for commit in data['commits'][:GH_MAX_COMMITS]:
+                msgs.append('{hash} {name} {message}'.format(
+                    hash=commit['id'][:7],
+                    name=commit['author']['name'],
+                    message=commit['message'].split('\n')[0]
+                ))
+                for change_type in changes:
+                    changes[change_type] |= set(commit.get(change_type, []))
+
+            if len(data['commits']) > GH_MAX_COMMITS:
+                msgs[-1] += ' [%i more]' % (len(data['commits']) - GH_MAX_COMMITS)
+
+            all_changes = []
+            for change_type, files in changes.items():
+                if files:
+                    all_changes.append(change_type + ': ' + str(len(files)))
+            if all_changes:
+                msgs[0] += ' (' + ', '.join(all_changes) + ')'
+            else:
+                msgs[0] += ' (no changes)'
+
 
         self.queue_messages_for_repo(repo, msgs)
 
