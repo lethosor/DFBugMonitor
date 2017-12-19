@@ -65,6 +65,9 @@ DATE_FORMAT = '%B %d, %Y'
 
 GH_MAX_COMMITS = 2
 
+def utf8(s):
+    return s.encode('utf-8')
+
 def pluralize(n, word, ending='s'):
     return '%i %s%s' % (n, word, ending if n != 1 else '')
 
@@ -129,7 +132,11 @@ class WebhookManager(object):
 
             if request.method == 'POST':
                 if 'X-GitHub-Event' in request.headers:
-                    self.on_event(request.headers['X-GitHub-Event'], request.json or {})
+                    self.on_event(
+                        type=request.headers['X-GitHub-Event'],
+                        data=request.json or {},
+                        request_id=request.headers['X-GitHub-Delivery'],
+                    )
 
             resp = flask.make_response('')
             resp.headers['server'] = ''
@@ -392,7 +399,18 @@ class DFBugMonitor(callbacks.Plugin):
             for msg in msg_list:
                 self.irc.sendMsg(ircmsgs.privmsg(channel, msg))
 
-    def on_webhook_event(self, type, data):
+    def send_error(self, msg):
+        self.irc.sendMsg(ircmsgs.privmsg('lethosor', msg))
+
+    def on_webhook_event(self, **kwargs):
+        try:
+            self.webhook_handler(**kwargs)
+        except Exception as e:
+            self.send_error('in %s: %r' % (kwargs.get('request_id', '?'), e))
+            self.send_error(str(kwargs.get('data','??'))[:500])
+            raise
+
+    def webhook_handler(self, type, data, **kwargs):
         type = type.lower()
         msgs = []
         if 'repository' in data:
@@ -411,7 +429,7 @@ class DFBugMonitor(callbacks.Plugin):
             count = len(data['commits'])
             msgs.append('[{repo}] {user} {verb} {num} {commits} to {branch}: {link}'.format(
                 repo=repo,
-                user=data['sender']['login'],
+                user=utf8(data['sender']['login']),
                 verb='force-pushed' if data['forced'] else 'pushed',
                 num=count,
                 commits='commit' if count == 1 else 'commits',
@@ -427,8 +445,8 @@ class DFBugMonitor(callbacks.Plugin):
             for commit in data['commits'][:GH_MAX_COMMITS]:
                 msgs.append('{hash} {name} {message}'.format(
                     hash=commit['id'][:7],
-                    name=commit['author']['name'],
-                    message=commit['message'].split('\n')[0]
+                    name=utf8(commit['author']['name']),
+                    message=utf8(commit['message'].split('\n')[0]),
                 ))
                 for change_type in changes:
                     changes[change_type] |= set(commit.get(change_type, []))
@@ -456,7 +474,7 @@ class DFBugMonitor(callbacks.Plugin):
 
             msgs.append('[{repo}] {user} {verb} pull request #{id}: {url}'.format(
                 repo=repo,
-                user=data['sender']['login'],
+                user=utf8(data['sender']['login']),
                 verb=verb,
                 id=data['number'],
                 url=data['pull_request']['html_url'],
