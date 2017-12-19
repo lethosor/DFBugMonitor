@@ -468,6 +468,20 @@ class DFBugMonitor(callbacks.Plugin):
                 msgs[0] += ' (no changes)'
 
 
+        # GitHub uses "issues" - why?
+        elif type.startswith('issue'):
+            if data['action'] not in ('opened', 'reopened', 'closed'):
+                return
+            msgs.append('[{repo}] {user} {verb} issue #{id}: {title}: {url}'.format(
+                repo=repo,
+                user=utf8(data['sender']['login']),
+                verb=data['action'],
+                id=data['issue']['number'],
+                title=utf8(data['issue']['title']),
+                url=data['issue']['html_url'],
+            ))
+
+
         elif type == 'pull_request':
             verb = data['action']
             # ignore other actions
