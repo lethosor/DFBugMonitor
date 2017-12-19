@@ -446,6 +446,22 @@ class DFBugMonitor(callbacks.Plugin):
                 msgs[0] += ' (no changes)'
 
 
+        elif type == 'pull_request':
+            verb = data['action']
+            # ignore other actions
+            if verb not in ('opened', 'reopened', 'closed'):
+                return
+            if verb == 'closed' and data['pull_request']['merged']:
+                verb = 'merged'
+
+            msgs.append('[{repo}] {user} {verb} pull request #{id}: {url}'.format(
+                repo=repo,
+                user=data['sender']['login'],
+                verb=verb,
+                id=data['number'],
+                url=data['pull_request']['html_url'],
+            ))
+
         self.queue_messages_for_repo(repo, msgs)
 
     class df(callbacks.Commands):
