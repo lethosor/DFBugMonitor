@@ -462,6 +462,15 @@ class DFBugMonitor(callbacks.Plugin):
                 url=data['pull_request']['html_url'],
             ))
 
+        elif type == 'release':
+            msgs.append('[{repo}] {user} {verb} release "{name}" (assets: {num_assets})'.format(
+                repo=repo,
+                user=data['release']['author']['login'],
+                verb=data['action'],
+                name=data['release']['name'],
+                num_assets=len(data['release']['assets']),
+            ))
+
         self.queue_messages_for_repo(repo, msgs)
 
     class df(callbacks.Commands):
