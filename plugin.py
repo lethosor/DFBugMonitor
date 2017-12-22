@@ -484,11 +484,11 @@ class DFBugMonitor(callbacks.Plugin):
                 url=data['issue']['html_url'],
             ))
             if data['issue']['labels']:
-                msgs[-1] += ' [labels: {0}]'.format(
-                    ', '.join(label['name'] for label in data['issue']['labels']))
+                msgs[-1] += ' [labels: {0}]'.format(utf8(
+                    ', '.join(label['name'] for label in data['issue']['labels'])))
             if data['issue']['milestone']:
-                msgs[-1] += ' [milestone: {0}]'.format(
-                    data['issue']['milestone']['title'])
+                msgs[-1] += ' [milestone: {0}]'.format(utf8(
+                    data['issue']['milestone']['title']))
 
 
         elif type == 'pull_request':
