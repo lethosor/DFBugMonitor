@@ -431,6 +431,9 @@ class DFBugMonitor(callbacks.Plugin):
         if type == 'push':
             branch = data['ref'].replace('refs/heads/', '')
             count = len(data['commits'])
+            if branch.startswith('refs/') and count == 0:
+                # ignore refs/tags/*, etc.
+                return
             msgs.append('[{repo}] {user} {verb} {num} {commits} to {branch}: {link}'.format(
                 repo=repo,
                 user=utf8(data['sender']['login']),
@@ -510,6 +513,17 @@ class DFBugMonitor(callbacks.Plugin):
                 name=data['release']['name'],
                 num_assets=len(data['release']['assets']),
             ))
+
+        elif type == 'create' or type == 'delete':
+            msgs.append('[{repo}] {user} {verb} {ref_type} {name}'.format(
+                repo=repo,
+                user=data['sender']['login'],
+                verb=type + 'd',
+                ref_type=data['ref_type'],
+                name=data['ref'],
+            ))
+            if type == 'create':
+                msgs[-1] += ': ' + data['repository']['html_url'] + '/commits/' + data['ref']
 
         self.queue_messages_for_repo(repo, msgs)
 
