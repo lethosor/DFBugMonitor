@@ -429,11 +429,12 @@ class DFBugMonitor(callbacks.Plugin):
             return
 
         if type == 'push':
+            branch = data['ref']
+            count = len(data['commits'])
             if branch.startswith('refs/') and count == 0:
                 # ignore refs/tags/*, etc.
                 return
-            branch = data['ref'].replace('refs/heads/', '')
-            count = len(data['commits'])
+            branch = branch.replace('refs/heads/', '')
             msgs.append('[{repo}] {user} {verb} {num} {commits} to {branch}: {link}'.format(
                 repo=repo,
                 user=utf8(data['sender']['login']),
