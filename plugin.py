@@ -451,10 +451,13 @@ class DFBugMonitor(callbacks.Plugin):
                 'modified': set(),
             })
             for commit in data['commits'][:GH_MAX_COMMITS]:
+                message = utf8(commit['message'])
+                if '\n' in message:
+                    message = message.split('\n')[0] + ' [...]'
                 msgs.append('{hash}: {name}: {message}'.format(
                     hash=commit['id'][:7],
                     name=utf8(commit['author']['name']),
-                    message=utf8(commit['message'].split('\n')[0]),
+                    message=message,
                 ))
                 for change_type in changes:
                     changes[change_type] |= set(commit.get(change_type, []))
