@@ -135,7 +135,7 @@ class WebhookManager(object):
                     self.on_event(
                         type=request.headers['X-GitHub-Event'],
                         data=request.json or {},
-                        request_id=request.headers['X-GitHub-Delivery'],
+                        request_id=request.headers.get('X-GitHub-Delivery', '?'),
                     )
 
             resp = flask.make_response('')
