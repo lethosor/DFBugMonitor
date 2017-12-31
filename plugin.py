@@ -670,6 +670,10 @@ class DFBugMonitor(callbacks.Plugin):
         def get(self, irc, msg, args, filename):
             """[<part of filename>]"""
             info = ghapi.request('repos/dfhack/dfhack/releases')[0]
+            info['assets'].sort(
+                key=lambda a: list(map(int, re.findall(r'\d+', a['name']))),
+                reverse=True
+            )
             def send_valid_assets():
                 irc.reply('Available downloads: %s' %
                     ', '.join(map(lambda a: re.sub(r'\-*dfhack\-*', '', a['name']), info['assets'])))
