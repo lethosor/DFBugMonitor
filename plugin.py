@@ -364,7 +364,7 @@ class DFBugMonitor(callbacks.Plugin):
 
         # Now that we've processed all the issues, send out the messages
         if msg_list:
-            self.queue_messages(msg_list)
+            self.queue_messages(msg_list, channels=['#dfhack', '#dwarffortress'])
 
         # Allow messages to be sent next time, if they were inhibited this time
         self.first_run = False
@@ -391,10 +391,10 @@ class DFBugMonitor(callbacks.Plugin):
             # Last not wasn't from Toady
             return []
 
-    def queue_messages(self, msg_list):
+    def queue_messages(self, msg_list, channels=None):
         if not isinstance(msg_list, list):
             msg_list = [msg_list]
-        for channel in sorted(self.irc.state.channels):
+        for channel in sorted(channels or self.irc.state.channels):
             for msg in msg_list:
                 self.irc.queueMsg(ircmsgs.privmsg(channel, msg))
 
