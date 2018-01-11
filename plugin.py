@@ -249,6 +249,10 @@ class DFBugMonitor(callbacks.Plugin):
         def wrapper():
             try:
                 f()
+            except Exception as e:
+                import traceback
+                self.send_error(e)
+                self.send_error(repr(traceback.format_exc()))
             finally:
                 return schedule.addEvent(wrapper, time.time() + self.registryValue(config_value), name)
 
@@ -289,6 +293,10 @@ class DFBugMonitor(callbacks.Plugin):
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
         soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
+
+        if not soup('tt'):
+            # no changelog at all for this version (yet)
+            return
 
         # First check to make sure the version name hasn't changed on us
         version_name = soup('tt')[0].findAll('a')[1].text
