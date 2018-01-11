@@ -325,6 +325,10 @@ class DFBugMonitor(callbacks.Plugin):
             issue_id_link = issue.findNext('a')
             issue_id = issue_id_link.text
 
+            if not issue_id:
+                # hit a blank line somehow
+                continue
+
             if issue_id in self.known_issues:
                 continue
 
