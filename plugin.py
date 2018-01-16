@@ -433,9 +433,10 @@ class DFBugMonitor(callbacks.Plugin):
             repo = data['repository']['full_name']
         elif type == 'BuildMaster-release-uploaded'.lower():
             repo = 'dfhack/dfhack'
-            rel = ghapi.request('repos/dfhack/dfhack/releases')[0]
-            msgs.append('[dfhack-build] BuildMaster uploaded packages for {tag}'.format(
-                tag=rel['tag_name'],
+            tag = ghapi.request('repos/dfhack/dfhack/tags')[0]
+            msgs.append('[dfhack-build] BuildMaster uploaded packages for {tag}: {url}'.format(
+                tag=tag['name'],
+                url='https://github.com/dfhack/dfhack/releases',
             ))
         else:
             return
