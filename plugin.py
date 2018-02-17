@@ -211,28 +211,9 @@ class DFBugMonitor(callbacks.Plugin):
 
         self.irc = irc
 
-        # Get the latest devlog
-        d = feedparser.parse(DEVLOG_URL)
-        self.last_devlog = d.entries[0].title
-
         # Prepare the already-known-issues set
         self.known_issues = set()
         self.first_run = True
-
-        # Find the latest version
-        soup = BeautifulSoup(urllib2.urlopen(CHANGELOG_URL).read())
-
-        latest_version_link = soup('tt')[0].findAll('a')[1]
-        matches = re.search('\d+$', latest_version_link['href'])
-        self.version_id = int(matches.group(0))
-
-        matches = re.search('^[\d\.]+$', latest_version_link.text)
-        if matches:
-            # The latest listed version has already been released, so our
-            # target version ID is probably one more
-            self.version_id = self.version_id + 1
-
-        print 'Starting at version %u' % (self.version_id,)
 
         self.schedule_event(self.scrape_changelog, 'bug_poll_s', 'scrape')
         self.schedule_event(self.check_devlog, 'devlog_poll_s', 'check_devlog')
@@ -251,14 +232,24 @@ class DFBugMonitor(callbacks.Plugin):
                 f()
             except Exception as e:
                 import traceback
-                self.send_error(e)
+                if 'timed out' in repr(e):
+                    return
+                self.send_error(repr(e))
                 self.send_error(repr(traceback.format_exc()))
             finally:
                 return schedule.addEvent(wrapper, time.time() + self.registryValue(config_value), name)
 
         return wrapper()
 
+    def init_devlog(self):
+        # Get the latest devlog
+        d = feedparser.parse(DEVLOG_URL)
+        self.last_devlog = d.entries[0].title
+
     def check_devlog(self):
+        if not hasattr(self, 'last_devlog'):
+            self.init_devlog()
+
         d = feedparser.parse(DEVLOG_URL)
 
         date = d.entries[0].title
@@ -289,7 +280,27 @@ class DFBugMonitor(callbacks.Plugin):
 
             self.queue_messages(split_message)
 
+    def init_changelog(self):
+        # Find the latest version
+        soup = BeautifulSoup(urllib2.urlopen(CHANGELOG_URL).read())
+
+        latest_version_link = soup('tt')[0].findAll('a')[1]
+        matches = re.search('\d+$', latest_version_link['href'])
+        self.version_id = int(matches.group(0))
+
+        matches = re.search('^[\d\.]+$', latest_version_link.text)
+        if matches:
+            # The latest listed version has already been released, so our
+            # target version ID is probably one more
+            self.version_id = self.version_id + 1
+
+        print 'Starting at version %u' % (self.version_id,)
+
+
     def scrape_changelog(self):
+        if not hasattr(self, 'version_id'):
+            self.init_changelog()
+
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
         soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
