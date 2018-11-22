@@ -232,8 +232,10 @@ class DFBugMonitor(callbacks.Plugin):
                 f()
             except Exception as e:
                 import traceback
-                if 'timed out' in repr(e):
-                    return
+                ignore_phrases = ['timed out', 'temporary failure']
+                for phrase in ignore_phrases:
+                    if phrase in repr(e).lower():
+                        return
                 self.send_error(repr(e))
                 self.send_error(repr(traceback.format_exc()))
             finally:
