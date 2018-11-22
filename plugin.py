@@ -569,6 +569,13 @@ class DFBugMonitor(callbacks.Plugin):
             if type == 'create':
                 msgs[-1] += ': ' + data['repository']['html_url'] + '/commits/' + data['ref']
 
+        elif type == 'status':
+            if data['state'].lower() == 'success' and 'upload' in data['context'].lower():
+                msgs.append('[dfhack-build] {description}: https://github.com/{name}/releases'.format(
+                    description=data['description'],
+                    name=data['name'],
+                ))
+
         self.queue_messages_for_repo(repo, msgs)
 
     class df(callbacks.Commands):
