@@ -246,6 +246,10 @@ class DFBugMonitor(callbacks.Plugin):
     def init_devlog(self):
         # Get the latest devlog
         d = feedparser.parse(DEVLOG_URL)
+        if not d or not d.entries:
+            log.warning('No devlog feed entries returned')
+            return
+
         self.last_devlog = d.entries[0].title
 
     def check_devlog(self):
@@ -253,6 +257,10 @@ class DFBugMonitor(callbacks.Plugin):
             self.init_devlog()
 
         d = feedparser.parse(DEVLOG_URL)
+
+        if not d or not d.entries:
+            log.warning('No devlog feed entries returned')
+            return
 
         date = d.entries[0].title
 
@@ -569,7 +577,12 @@ class DFBugMonitor(callbacks.Plugin):
 
             Returns the current DF version
             """
-            e = feedparser.parse(RELEASE_LOG_URL).entries[0]
+            try:
+                e = feedparser.parse(RELEASE_LOG_URL).entries[0]
+            except (IndexError, AttributeError):
+                irc.reply('Unable to contact DF server')
+                return
+
             version = re.search(r'DF\s*(\S+)', e.title).group(1)
             date = time.strftime(DATE_FORMAT, e.published_parsed)
 
