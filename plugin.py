@@ -592,6 +592,27 @@ class DFBugMonitor(callbacks.Plugin):
             irc.reply('Latest DF version: %s, released %s [%s]: http://www.bay12games.com/dwarves/' % (version, date, delta_str))
         version = wrap(version)
 
+        def announce(self, irc, msg, args, raw):
+            """#channel [#channel2 ...] <message>
+
+            Sends a message to the given channel(s)
+            """
+
+            raw = raw[0].strip()
+            channels = []
+            while raw.startswith('#'):
+                i = raw.index(' ')
+                channels.append(raw[:i])
+                raw = raw[i + 1:]
+            if not channels:
+                irc.reply('No channels given')
+                return
+            message = raw
+            for channel in channels:
+                irc.sendMsg(ircmsgs.privmsg(channel, message))
+
+        announce = wrap(announce, [('checkCapability', 'admin'), any('text')])
+
     class dfhack(callbacks.Commands):
         def version(self, irc, msg, args):
             """takes no arguments
