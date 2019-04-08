@@ -253,6 +253,9 @@ class DFBugMonitor(callbacks.Plugin):
         self.last_devlog = d.entries[0].title
 
     def check_devlog(self):
+        for channel in ('#dfhack', '#dwarffortress'):
+            if channel not in self.irc.state.channels:
+                self.irc.queueMsg(ircmsgs.join(channel))
         if not hasattr(self, 'last_devlog'):
             self.init_devlog()
 
