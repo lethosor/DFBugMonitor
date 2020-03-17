@@ -48,13 +48,13 @@ import re
 import socket
 import threading
 import time
-import urllib2
 
 import flask
 import feedparser
 import dateutil.parser
+import requests
 from html2text import HTML2Text
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from dateutil.relativedelta import relativedelta
 
 DEVLOG_URL = 'http://www.bay12games.com/dwarves/dev_now.rss'
@@ -109,7 +109,7 @@ class GithubApi(object):
         if not url.startswith('https://'):
             url = 'https://api.github.com/' + url
         if url not in self._cache or self._cache[url].expired or ignore_cache:
-            self._cache[url] = CacheEntry(json.load(urllib2.urlopen(url)))
+            self._cache[url] = CacheEntry(requests.get(url).json())
         return self._cache[url].contents
 
     def clear_cache(self):
@@ -122,7 +122,7 @@ class WebhookManager(object):
         self.app = flask.Flask(__name__)
         self.on_event = on_event
         self._shutdown = False
-        self.token = hashlib.sha1(str(random.random())).hexdigest()
+        self.token = hashlib.sha1(str(random.random()).encode()).hexdigest()
 
         @self.app.route('/hook/', methods=['GET', 'POST'])
         def hook():
@@ -281,7 +281,7 @@ class DFBugMonitor(callbacks.Plugin):
 
             # Convert the message to text, and strip empty lines
             processed_message = h.handle(full_message)
-            split_message = filter(None, [x.strip() for x in processed_message.split('\n')])
+            split_message = [x.strip() for x in processed_message.split('\n') if x]
 
             max_lines = self.registryValue('max_lines')
             if len(split_message) > max_lines:
@@ -295,7 +295,7 @@ class DFBugMonitor(callbacks.Plugin):
 
     def init_changelog(self):
         # Find the latest version
-        soup = BeautifulSoup(urllib2.urlopen(CHANGELOG_URL).read())
+        soup = BeautifulSoup(requests.get(CHANGELOG_URL).text)
 
         latest_version_link = soup('tt')[0].findAll('a')[1]
         matches = re.search('\d+$', latest_version_link['href'])
@@ -307,7 +307,7 @@ class DFBugMonitor(callbacks.Plugin):
             # target version ID is probably one more
             self.version_id = self.version_id + 1
 
-        print 'Starting at version %u' % (self.version_id,)
+        print('Starting at version %u' % self.version_id)
 
 
     def scrape_changelog(self):
@@ -315,7 +315,7 @@ class DFBugMonitor(callbacks.Plugin):
             self.init_changelog()
 
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
-        soup = BeautifulSoup(urllib2.urlopen(changelog_url).read(),
+        soup = BeautifulSoup(requests.get(changelog_url).text,
                 convertEntities=BeautifulSoup.HTML_ENTITIES)
 
         if not soup('tt'):
@@ -399,7 +399,7 @@ class DFBugMonitor(callbacks.Plugin):
 
     def get_closing_note(self, issue_url):
         # Read the issue page to check for a closing note by Toady
-        soup = BeautifulSoup(urllib2.urlopen(issue_url).read())
+        soup = BeautifulSoup(requests.get(issue_url).text)
         bug_notes = soup.findAll('tr', 'bugnote')
 
         if not bug_notes:
@@ -654,7 +654,7 @@ class DFBugMonitor(callbacks.Plugin):
                 else:
                     info = ghapi.request('repos/dfhack/dfhack/releases')[0]
                     release_name = info['tag_name']
-            except urllib2.HTTPError as e:
+            except requests.RequestException as e:
                 irc.reply('Could not fetch release information - nonexistent release? (%s)' % e)
                 return
 
