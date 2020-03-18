@@ -315,8 +315,7 @@ class DFBugMonitor(callbacks.Plugin):
             self.init_changelog()
 
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
-        soup = BeautifulSoup(requests.get(changelog_url).text,
-                convertEntities=BeautifulSoup.HTML_ENTITIES)
+        soup = BeautifulSoup(requests.get(changelog_url).text)
 
         if not soup('tt'):
             # no changelog at all for this version (yet)
