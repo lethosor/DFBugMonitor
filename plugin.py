@@ -165,7 +165,7 @@ class WebhookManager(object):
         self._shutdown = True
         s = socket.socket()
         s.connect(('localhost', 9002))
-        s.send('GET /shutdown/%s/ HTTP/1.0\r\n\r\n' % self.token)
+        s.send(('GET /shutdown/%s/ HTTP/1.0\r\n\r\n' % self.token).encode())
         s.recv(1024)
         s.close()
 
