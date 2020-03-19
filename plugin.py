@@ -65,9 +65,6 @@ DATE_FORMAT = '%B %d, %Y'
 
 GH_MAX_COMMITS = 2
 
-def utf8(s):
-    return s.encode('utf-8')
-
 def pluralize(n, word, ending='s'):
     return '%i %s%s' % (n, word, ending if n != 1 else '')
 
@@ -473,7 +470,7 @@ class DFBugMonitor(callbacks.Plugin):
             branch = branch.replace('refs/heads/', '')
             msgs.append('[{repo}] {user} {verb} {num} {commits} to {branch}: {link}'.format(
                 repo=repo,
-                user=utf8(data['sender']['login']),
+                user=data['sender']['login'],
                 verb='force-pushed' if data['forced'] else 'pushed',
                 num=count,
                 commits='commit' if count == 1 else 'commits',
@@ -487,12 +484,12 @@ class DFBugMonitor(callbacks.Plugin):
                 'modified': set(),
             })
             for commit in data['commits'][:GH_MAX_COMMITS]:
-                message = utf8(commit['message'])
+                message = commit['message']
                 if '\n' in message:
                     message = message.split('\n')[0] + ' [...]'
                 msgs.append('{hash}: {name}: {message}'.format(
                     hash=commit['id'][:7],
-                    name=utf8(commit['author']['name']),
+                    name=commit['author']['name'],
                     message=message,
                 ))
                 for change_type in changes:
@@ -517,18 +514,18 @@ class DFBugMonitor(callbacks.Plugin):
                 return
             msgs.append('[{repo}] {user} {verb} issue #{id}: {title}: {url}'.format(
                 repo=repo,
-                user=utf8(data['sender']['login']),
+                user=data['sender']['login'],
                 verb=data['action'],
                 id=data['issue']['number'],
-                title=utf8(data['issue']['title']),
+                title=data['issue']['title'],
                 url=data['issue']['html_url'],
             ))
             if data['issue']['labels']:
-                msgs[-1] += ' [labels: {0}]'.format(utf8(
-                    ', '.join(label['name'] for label in data['issue']['labels'])))
+                msgs[-1] += ' [labels: {0}]'.format(
+                    ', '.join(label['name'] for label in data['issue']['labels']))
             if data['issue']['milestone']:
-                msgs[-1] += ' [milestone: {0}]'.format(utf8(
-                    data['issue']['milestone']['title']))
+                msgs[-1] += ' [milestone: {0}]'.format(
+                    data['issue']['milestone']['title'])
 
 
         elif type == 'pull_request':
@@ -542,10 +539,10 @@ class DFBugMonitor(callbacks.Plugin):
             msgs.append('[{repo}] {user} {verb} pull request #{id}: '
                         '{title} ({base}...{head}) {url}'.format(
                 repo=repo,
-                user=utf8(data['sender']['login']),
+                user=data['sender']['login'],
                 verb=verb,
                 id=data['pull_request']['number'],
-                title=utf8(data['pull_request']['title']),
+                title=data['pull_request']['title'],
                 base=data['pull_request']['base']['ref'],
                 head=data['pull_request']['head']['ref'],
                 url=data['pull_request']['html_url'],
