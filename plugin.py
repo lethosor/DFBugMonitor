@@ -492,6 +492,8 @@ class DFBugMonitor(callbacks.Plugin):
                     name=commit['author']['name'],
                     message=message,
                 ))
+
+            for commit in data['commits']:
                 for change_type in changes:
                     changes[change_type] |= set(commit.get(change_type, []))
 
