@@ -292,7 +292,7 @@ class DFBugMonitor(callbacks.Plugin):
 
     def init_changelog(self):
         # Find the latest version
-        soup = BeautifulSoup(requests.get(CHANGELOG_URL).text)
+        soup = BeautifulSoup(requests.get(CHANGELOG_URL).text, 'html.parser')
 
         latest_version_link = soup('tt')[0].findAll('a')[1]
         matches = re.search('\d+$', latest_version_link['href'])
@@ -312,7 +312,7 @@ class DFBugMonitor(callbacks.Plugin):
             self.init_changelog()
 
         changelog_url = CHANGELOG_URL+('?version_id=%u' % (self.version_id,))
-        soup = BeautifulSoup(requests.get(changelog_url).text)
+        soup = BeautifulSoup(requests.get(changelog_url).text, 'html.parser')
 
         if not soup('tt'):
             # no changelog at all for this version (yet)
@@ -395,7 +395,7 @@ class DFBugMonitor(callbacks.Plugin):
 
     def get_closing_note(self, issue_url):
         # Read the issue page to check for a closing note by Toady
-        soup = BeautifulSoup(requests.get(issue_url).text)
+        soup = BeautifulSoup(requests.get(issue_url).text, 'html.parser')
         bug_notes = soup.findAll('tr', 'bugnote')
 
         if not bug_notes:
@@ -412,7 +412,7 @@ class DFBugMonitor(callbacks.Plugin):
                     'bugnote-note-public').text + '"'
             return last_note_msg
         else:
-            # Last not wasn't from Toady
+            # Last note wasn't from Toady
             return []
 
     def queue_messages(self, msg_list, channels=None):
