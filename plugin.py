@@ -551,6 +551,8 @@ class DFBugMonitor(callbacks.Plugin):
             ))
 
         elif type == 'release':
+            if data['action'] not in ('published', 'deleted'):
+                return
             msgs.append('[{repo}] {user} {verb} release "{name}" (assets: {num_assets})'.format(
                 repo=repo,
                 user=data['release']['author']['login'],
