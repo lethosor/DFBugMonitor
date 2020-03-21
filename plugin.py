@@ -112,6 +112,15 @@ class GithubApi(object):
     def clear_cache(self):
         self._cache.clear()
 
+    def shorten_url(self, url):
+        try:
+            r = requests.post('https://git.io/create', {'url': url})
+            r.raise_for_status()
+            return 'https://git.io/' + r.text
+        except requests.RequestException as e:
+            log.warning('failed to shorten URL %r: %s', url, e)
+            return url
+
 ghapi = GithubApi()
 
 class WebhookManager(object):
@@ -475,7 +484,7 @@ class DFBugMonitor(callbacks.Plugin):
                 num=count,
                 commits='commit' if count == 1 else 'commits',
                 branch=branch,
-                link=data['compare'],
+                link=ghapi.shorten_url(data['compare']),
             ))
 
             changes = collections.OrderedDict({
