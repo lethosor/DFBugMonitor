@@ -227,6 +227,8 @@ class DFBugMonitor(callbacks.Plugin):
         self.webhooks = WebhookManager(on_event=self.on_webhook_event)
         self.webhooks.start()
 
+        self.failing_checks = set()
+
     def schedule_event(self, f, config_value, name):
         # Like schedule.addPeriodicEvent, but capture the name of our config
         # variable in the closure rather than the value
@@ -587,6 +589,34 @@ class DFBugMonitor(callbacks.Plugin):
                     description=data['description'],
                     name=data['name'],
                 ))
+
+        elif type == 'check_run':
+            if (data['check_run']['status'].lower().startswith('complete') and
+                data['check_run']['check_suite']['head_branch'] == data['repository']['default_branch'] and
+                not data['check_run']['pull_requests']):
+                check_token = (data['repository']['full_name'], data['check_run']['name'])
+                check_passed = data['check_run']['conclusion'] in ('success', 'skipped')
+                verb = None
+                if check_passed:
+                    if check_token in self.failing_checks:
+                        verb = 'was fixed'
+                        self.failing_checks.remove(check_token)
+                else:
+                    if check_token in self.failing_checks:
+                        verb = 'is still failing'
+                    else:
+                        verb = 'failed'
+                        self.failing_checks.add(check_token)
+                if verb:
+                    msgs.append('[{repo}] Check "{check}" on {branch} {verb} (commit {hash} by {user}): {url}'.format(
+                        repo=data['repository']['full_name'],
+                        check=data['check_run']['name'],
+                        branch=data['check_run']['check_suite']['head_branch'],
+                        verb=verb,
+                        hash=data['check_run']['check_suite']['head_sha'][:7],
+                        user=data['sender']['login'],
+                        url=data['check_run']['details_url'],
+                    ))
 
         self.queue_messages_for_repo(repo, msgs)
 
