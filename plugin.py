@@ -593,7 +593,7 @@ class DFBugMonitor(callbacks.Plugin):
         elif type == 'check_run':
             if (data['check_run']['status'].lower().startswith('complete') and
                 data['check_run']['check_suite']['head_branch'] == data['repository']['default_branch'] and
-                not data['check_run']['pull_requests']):
+                not data['repository']['fork']):
                 check_token = (data['repository']['full_name'], data['check_run']['name'])
                 check_passed = data['check_run']['conclusion'] in ('success', 'skipped')
                 verb = None
